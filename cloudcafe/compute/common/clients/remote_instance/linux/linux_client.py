@@ -57,7 +57,6 @@ class LinuxClient(RemoteInstanceClient):
         PingClient.ping_until_reachable(ip_address,
                                         timeout=connection_timeout,
                                         interval_time=retry_interval)
-
         if key is not None:
             auth_strategy = SSHAuthStrategy.KEY_STRING
         else:
@@ -440,7 +439,7 @@ class LinuxClient(RemoteInstanceClient):
         @rtype: string
         """
 
-        out = self.ssh_client.execute_command('mkfs -t {type} {disk}'.format(
+        out = self.ssh_client.execute_command('yes | mkfs -t {type} {disk}'.format(
             type=filesystem_type, disk=disk))
         if out is None:
             return None
@@ -590,3 +589,67 @@ class LinuxClient(RemoteInstanceClient):
 
     def filesystem_sync(self):
         self.ssh_client.execute_command('sync')
+
+    def update_packages_debian_ubuntu(self):
+        """
+        Runs apt-get update on the server
+        """
+        out = self.ssh_client.execute_command('apt-get update')
+        if out:
+            return out.stdout
+
+    def install_iscsi_debian_ubuntu(self):
+        """
+        Installs iscsi on the server using apt-get
+        """
+        out = self.ssh_client.execute_command('apt-get install open-iscsi -y')
+        if out:
+            return out.stdout
+
+    def update_packages_centos_fedora(self):
+        """
+        Runs yum update on the server
+        """
+        out = self.ssh_client.execute_command('yum update')
+        if out:
+            return out.stdout
+
+    def install_iscsi_centos_fedora(self):
+        """
+        Installs iscsi on the server usning yum
+        """
+        out = self.ssh_client.execute_command('yum -y install iscsi-initiator-utils')
+        if out:
+            return out.stdout
+
+    def set_up_iscsi_client_and_attach_volume(self, metadata):
+        """
+        Set up iscsi client
+        """
+        out_list = []
+        out = self.ssh_client.execute_command(
+            'echo InitiatorName={0} > /etc/iscsi/initiator_name.iscsi'.format(
+                metadata['initiator_name']))
+        out_list.append(out.stdout)
+
+        out2 = self.ssh_client.execute_command(
+            'iscsiadm -m discovery --type sendtargets --portal {0}'.format(
+                metadata['target_portal']))
+        out_list.append(out2.stdout)
+
+        out3 = self.ssh_client.execute_command(
+            'iscsiadm -m node --targetname={0} --portal {1} --login'.format(
+                metadata['target_iqn'], metadata['target_portal']))
+        out_list.append(out3.stdout)
+        if out_list:
+            return out_list
+
+    def iscsi_logout_of_target(self, metadata):
+        """
+        Logout of the target
+        """
+        out = self.ssh_client.execute_command(
+            'iscsiadm -m node --targetname={0} --portal {1} --logout'.format(
+                metadata['target_iqn'], metadata['target_portal']))
+        if out:
+            return out.stdout
