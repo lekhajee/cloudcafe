@@ -288,12 +288,10 @@ class ServerBehaviors(BaseComputeBehavior):
             resp = self.servers_client.get_server(server_id)
             server = self.verify_entity(resp)
 
-            # Temporarily commenting this, until onmetal fixes server to remain in
-            # ACTIVE state when server is deleted when volume is still attached.
-            # if server.status.lower() == ServerStates.ERROR.lower():
-            #     raise BuildErrorException(
-            #         "Build failed. Server with uuid {server_id} entered "
-            #         "ERROR status.".format(server_id=server.id))
+            if server.status.lower() == ServerStates.ERROR.lower():
+                raise BuildErrorException(
+                    "Build failed. Server with uuid {server_id} entered "
+                    "ERROR status.".format(server_id=server.id))
 
             if server.status == desired_status:
                 break
@@ -333,11 +331,12 @@ class ServerBehaviors(BaseComputeBehavior):
             self.verify_entity(response)
             task_state = response.entity.task_state.lower()
 
-            if response.entity.status.lower() == ServerStates.ERROR.lower():
-                raise BuildErrorException(
-                    "Build failed. Server with uuid {server_id} entered "
-                    "ERROR status.".format(server_id=server_id))
-
+            # Temporarily commenting this, until onmetal fixes server to remain in
+            # ACTIVE state when server is deleted when volume is still attached.
+            # if response.entity.status.lower() == ServerStates.ERROR.lower():
+            #     raise BuildErrorException(
+            #         "Build failed. Server with uuid {server_id} entered "
+            #         "ERROR status.".format(server_id=server_id))
             if task_state == state_to_wait_for:
                 break
             time.sleep(interval_time)
