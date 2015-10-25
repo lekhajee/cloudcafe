@@ -610,7 +610,7 @@ class LinuxClient(RemoteInstanceClient):
         """
         Runs yum update on the server
         """
-        out = self.ssh_client.execute_command('yum update')
+        out = self.ssh_client.execute_command('yum -y update')
         if out:
             return out.stdout
 
